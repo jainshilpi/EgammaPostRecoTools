@@ -190,37 +190,71 @@ def _setupEgammaUpdatorMiniAOD(eleSrc,phoSrc,cfg):
     modifiers = cms.VPSet()
     from RecoEgamma.EgammaTools.egammaObjectModificationsInMiniAOD_cff import egamma8XObjectUpdateModifier,egamma9X105XUpdateModifier
 
-    if _isInputFrom80X(cfg.era): modifiers.append(egamma8XObjectUpdateModifier)
-    if _isInputFrom94XTo102X(cfg.era): 
+    if _isInputFrom80X(cfg.era): 
+        if not cfg.isMiniAOD:
+            egamma8XObjectUpdateModifier.ecalRecHitsEB = cms.InputTag("reducedEcalRecHitsEB","")
+            egamma8XObjectUpdateModifier.ecalRecHitsEE = cms.InputTag("reducedEcalRecHitsEE","")
+        modifiers.append(egamma8XObjectUpdateModifier)
+    if _isInputFrom94XTo102X(cfg.era) and _isULDataformat(): 
         #we have to add the modules to produce the variables needed to update the to new dataformat to the task
         process.load('RecoEgamma.ElectronIdentification.heepIdVarValueMapProducer_cfi')
         process.load('RecoEgamma.PhotonIdentification.photonIDValueMapProducer_cff')
-        process.load('RecoEgamma.EgammaIsolationAlgos.egmPhotonIsolationMiniAOD_cff')
-        process.heepIDVarValueMaps.elesMiniAOD = eleSrc
-        process.photonIDValueMapProducer.srcMiniAOD = phoSrc
+
+        if cfg.isMiniAOD:
+            process.load('RecoEgamma.EgammaIsolationAlgos.egmPhotonIsolationMiniAOD_cff')
+            phoIsoTask = process.egmPhotonIsolationMiniAODTask 
+            process.heepIDVarValueMaps.elesMiniAOD = eleSrc
+            process.photonIDValueMapProducer.srcMiniAOD = phoSrc
+            #now disabling miniAOD/AOD auto detection...
+            process.heepIDVarValueMaps.dataFormat = 2 
+            process.photonIDValueMapProducer.src = cms.InputTag("") 
+            
+        else:
+            raise Exception("EgammaPostRecoTools: It is currently not possible to read AOD produced pre 106X in 106X+, please email e/gamma pog to get a resolution") 
+            process.load('RecoEgamma.EgammaIsolationAlgos.egmPhotonIsolationAOD_cff')
+            phoIsoTask = process.egmPhotonIsolationAODTask 
+            process.heepIDVarValueMaps.elesAOD = eleSrc
+            process.photonIDValueMapProducer.src = phoSrc
+            #now disabling miniAOD/AOD auto detection...
+            process.heepIDVarValueMaps.dataFormat = 1
+            process.photonIDValueMapProducer.srcMiniAOD = cms.InputTag("") 
+            
         process.egmPhotonIsolation.srcToIsolate = phoSrc
-        #now disabling miniAOD/AOD auto detection...
-        process.heepIDVarValueMaps.dataFormat = 2 
-        process.photonIDValueMapProducer.src = cms.InputTag("") 
-        process.egammaUpdatorTask.add(process.heepIDVarValueMaps,process.egmPhotonIsolation,process.photonIDValueMapProducer)
+    
+
+        process.egammaUpdatorTask.add(process.heepIDVarValueMaps,phoIsoTask,process.photonIDValueMapProducer)
         modifiers.append(egamma9X105XUpdateModifier)
 
     if modifiers != cms.VPSet():
-        process.updatedElectrons = cms.EDProducer("ModifiedElectronProducer",
-                                                  src=eleSrc,
-                                                  modifierConfig = cms.PSet(
-                                                      modifications = modifiers
+        if cfg.isMiniAOD:        
+            modifiedEleProdName = "ModifiedElectronProducer"
+            modifiedPhoProdName = "ModifiedPhotonProducer"
+            updatedEleName = "updatedElectrons"
+            updatedPhoName = "updatedPhotons"
+        else:
+            modifiedEleProdName = "ModifiedGsfElectronProducer"
+            modifiedPhoProdName = "ModifiedRecoPhotonProducer"
+            updatedEleName = "gedGsfElectrons"
+            updatedPhoName = "gedPhotons"
+            
+            
+        setattr(process,updatedEleName,cms.EDProducer(modifiedEleProdName,
+                                                      src=eleSrc,
+                                                      modifierConfig = cms.PSet(
+                                                          modifications = modifiers
                                                       )
                                                   )
-        
-        process.updatedPhotons = cms.EDProducer("ModifiedPhotonProducer",
-                                                src=phoSrc,
-                                                modifierConfig = cms.PSet(
-                                                    modifications = modifiers
-                                                    )
-                                                )
-        process.egammaUpdatorTask.add(process.updatedElectrons,process.updatedPhotons)
-        return cms.InputTag("updatedElectrons"),cms.InputTag("updatedPhotons")
+        )
+        setattr(process,updatedPhoName,cms.EDProducer(modifiedPhoProdName,
+                                                     src=phoSrc,
+                                                     modifierConfig = cms.PSet(
+                                                         modifications = modifiers
+                                                     )
+                                                 )
+        )
+        process.egammaUpdatorTask.add(getattr(process,updatedEleName))
+        process.egammaUpdatorTask.add(getattr(process,updatedPhoName))
+        return cms.InputTag(updatedEleName),cms.InputTag(updatedPhoName)
     else:
         return cms.InputTag(eleSrc.value()),cms.InputTag(phoSrc.value())
 
@@ -236,33 +270,44 @@ def _setupEgammaEnergyCorrectionsMiniAOD(eleSrc,phoSrc,cfg):
 
     process.egammaScaleSmearTask = cms.Task()  
     if cfg.runEnergyCorrections == False:
-        return
-
+        return cms.InputTag(eleSrc.value()),cms.InputTag(phoSrc.value())
+    
+    if cfg.isMiniAOD:
+        eleCalibName = "calibratedPatElectrons"
+        phoCalibName = "calibratedPatPhotons"
+    else:
+        eleCalibName = "calibratedElectrons"
+        phoCalibName = "calibratedPhotons"
+        
     process.load('RecoEgamma.EgammaTools.calibratedEgammas_cff')
-    process.calibratedPatElectrons.src = eleSrc
-    process.calibratedPatPhotons.src = phoSrc
+
+    eleCalibProd = getattr(process,eleCalibName)
+    phoCalibProd = getattr(process,phoCalibName)
+
+    eleCalibProd.src = eleSrc
+    phoCalibProd.src = phoSrc
     
     energyCorrectionFile = _getEnergyCorrectionFile(cfg.era)
-    process.calibratedPatElectrons.correctionFile = energyCorrectionFile
-    process.calibratedPatPhotons.correctionFile = energyCorrectionFile
+    eleCalibProd.correctionFile = energyCorrectionFile
+    phoCalibProd.correctionFile = energyCorrectionFile
 
-    if cfg.applyEPCombBug and hasattr(process.calibratedPatElectrons,'useSmearCorrEcalEnergyErrInComb'):
-        process.calibratedPatElectrons.useSmearCorrEcalEnergyErrInComb=True
-    elif hasattr(process.calibratedPatElectrons,'useSmearCorrEcalEnergyErrInComb'):
-        process.calibratedPatElectrons.useSmearCorrEcalEnergyErrInComb=False
+    if cfg.applyEPCombBug and hasattr(eleCalibProd,'useSmearCorrEcalEnergyErrInComb'):
+        eleCalibProd.useSmearCorrEcalEnergyErrInComb=True
+    elif hasattr(eleCalibProd,'useSmearCorrEcalEnergyErrInComb'):
+        eleCalibProd.useSmearCorrEcalEnergyErrInComb=False
     elif cfg.applyEPCombBug:
         raise RuntimeError('Error in postRecoEgammaTools, the E/p combination bug can not be applied in >= 10_2_X (applyEPCombBug must be False) , it is only possible to emulate in 9_4_X')
 
-    process.egammaScaleSmearTask.add(process.calibratedPatElectrons)
-    process.egammaScaleSmearTask.add(process.calibratedPatPhotons)
+    process.egammaScaleSmearTask.add(eleCalibProd)
+    process.egammaScaleSmearTask.add(phoCalibProd)
 
     if cfg.applyEnergyCorrections or cfg.applyVIDOnCorrectedEgamma:
-        process.calibratedPatElectrons.produceCalibratedObjs = True
-        process.calibratedPatPhotons.produceCalibratedObjs = True
-        return cms.InputTag("calibratedPatElectrons"),cms.InputTag("calibratedPatPhotons")
+        eleCalibProd.produceCalibratedObjs = True
+        phoCalibProd.produceCalibratedObjs = True
+        return cms.InputTag(eleCalibName),cms.InputTag(eleCalibName)
     else:
-        process.calibratedPatElectrons.produceCalibratedObjs = False 
-        process.calibratedPatPhotons.produceCalibratedObjs = False 
+        eleCalibProd.produceCalibratedObjs = False 
+        phoCalibProd.produceCalibratedObjs = False 
         return cms.InputTag(eleSrc.value()),cms.InputTag(phoSrc.value())
     
         
@@ -272,25 +317,50 @@ def _setupEgammaVIDMiniAOD(eleSrc,phoSrc,cfg):
     if cfg.runVID:
         process.egammaVIDTask.add(process.egmGsfElectronIDTask)
         process.egammaVIDTask.add(process.egmPhotonIDTask)
+        
         process.egmGsfElectronIDs.physicsObjectSrc = eleSrc
         process.egmPhotonIDs.physicsObjectSrc = phoSrc
-        process.electronMVAValueMapProducer.srcMiniAOD = eleSrc
+
+        if cfg.isMiniAOD:
+            process.electronMVAValueMapProducer.srcMiniAOD = eleSrc
+            process.photonMVAValueMapProducer.srcMiniAOD = phoSrc 
+            #we need to also zero out the AOD srcs as otherwise it gets confused in two tier jobs
+            #and bad things happen
+            process.electronMVAValueMapProducer.src = cms.InputTag("")
+            process.photonMVAValueMapProducer.src = cms.InputTag("")
+        else:
+            process.electronMVAValueMapProducer.src = eleSrc
+            process.photonMVAValueMapProducer.src = phoSrc 
+            process.electronMVAValueMapProducer.srcMiniAOD = cms.InputTag("")
+            process.photonMVAValueMapProducer.srcMiniAOD = cms.InputTag("")
+
+            
         if hasattr(process,'electronMVAVariableHelper'):
-            process.electronMVAVariableHelper.srcMiniAOD = eleSrc
-        process.photonMVAValueMapProducer.srcMiniAOD = phoSrc 
-        
-        #process.photonIDValueMapProducer.srcMiniAOD = phoSrc
-        #process.egmPhotonIsolation.srcToIsolate = phoSrc
+            if cfg.isMiniAOD:
+                process.electronMVAVariableHelper.srcMiniAOD = eleSrc
+                process.electronMVAVariableHelper.src = cms.InputTag("")
+            else:
+                process.electronMVAVariableHelper.src = eleSrc
+                process.electronMVAVariableHelper.srcMiniAOD = cms.InputTag("")
 
-        #we need to also zero out the AOD srcs as otherwise it gets confused in two tier jobs
-        #and bad things happen
-        process.electronMVAValueMapProducer.src = cms.InputTag("")
-        process.photonMVAValueMapProducer.src = cms.InputTag("")
-        process.photonIDValueMapProducer.src = cms.InputTag("")
-
-    if cfg.runVID and hasattr(process,'heepIDVarValueMaps') and False:
-        process.heepIDVarValueMaps.elesMiniAOD = eleSrc
-        process.heepIDVarValueMaps.dataFormat = 2
+        #pre UL dataformat, we have to run the egmPhotonIsolation and the like as part of vid
+        #post UL dataformat its in the object, how if we are reading old data it will be running
+        #as part of the updator sequence so even more important not to touch it
+        if not _isULDataformat():
+            process.egmPhotonIsolation.srcToIsolate = phoSrc
+            if cfg.isMiniAOD:
+                process.photonIDValueMapProducer.srcMiniAOD = phoSrc
+                process.photonIDValueMapProducer.src = cms.InputTag("")
+                if hasattr(process,'heepIDVarValueMaps'):
+                    process.heepIDVarValueMaps.elesMiniAOD = eleSrc
+                    process.heepIDVarValueMaps.dataFormat = 2
+                    
+            else:
+                process.photonIDValueMapProducer.src = phoSrc
+                process.photonIDValueMapProducer.srcMiniAOD = cms.InputTag("")
+                if hasattr(process,'heepIDVarValueMaps'):
+                    process.heepIDVarValueMaps.elesAOD = eleSrc
+                    process.heepIDVarValueMaps.dataFormat = 1
 
     return eleSrc,phoSrc
 
@@ -299,6 +369,12 @@ def _setupEgammaEmbedderMiniAOD(eleSrc,phoSrc,cfg):
     from RecoEgamma.EgammaTools.egammaObjectModificationsInMiniAOD_cff import egamma_modifications,egamma8XLegacyEtScaleSysModifier
     from RecoEgamma.EgammaTools.egammaObjectModifications_tools import makeVIDBitsModifier,makeVIDinPATIDsModifier,makeEnergyScaleAndSmearingSysModifier  
     process = cfg.process
+
+    process.egammaPostRecoPatUpdatorTask = cms.Task()
+
+    if not cfg.isMiniAOD:
+        return cms.InputTag(eleSrc.value()),cms.InputTag(phoSrc.value())
+
     if cfg.runVID:
         egamma_modifications.append(makeVIDBitsModifier(process,"egmGsfElectronIDs","egmPhotonIDs"))
         egamma_modifications.append(makeVIDinPATIDsModifier(process,"egmGsfElectronIDs","egmPhotonIDs"))
@@ -338,13 +414,14 @@ def _setupEgammaEmbedderMiniAOD(eleSrc,phoSrc,cfg):
                                                 )
                                             )
 
-    process.egammaPostRecoPatUpdatorTask = cms.Task()
+   
     #we only run if the modifications are going to do something
     if egamma_modifications != cms.VPSet():
         process.egammaPostRecoPatUpdatorTask.add(process.slimmedElectrons)
         process.egammaPostRecoPatUpdatorTask.add(process.slimmedPhotons)
-       
-    return eleSrc,phoSrc
+        return eleSrc,phoSrc
+    else:
+        return cms.InputTag(eleSrc.value()),cms.InputTag(phoSrc.value())
 
 def _setupEgammaPostRECOSequenceMiniAOD(*args,**kwargs):
     """
@@ -366,9 +443,15 @@ def _setupEgammaPostRECOSequenceMiniAOD(*args,**kwargs):
     if cfg.applyEnergyCorrections != cfg.applyVIDOnCorrectedEgamma:
         raise RuntimeError('Error, applyEnergyCorrections {} and applyVIDOnCorrectedEgamma {} must be equal to each other for now,\n functionality for them to be different isnt yet availible'.format(applyEnergyCorrections,applyVIDOnCorrectedEgamma))
 
+    if cfg.isMiniAOD:
+        srcPhoLabel = 'slimmedPhotons'
+        srcEleLabel = 'slimmedElectrons'
+    else:
+        srcPhoLabel = 'gedPhotons'
+        srcEleLabel = 'gedGsfElectrons'
 
-    phoSrc = cms.InputTag('slimmedPhotons',processName=cms.InputTag.skipCurrentProcess())
-    eleSrc = cms.InputTag('slimmedElectrons',processName=cms.InputTag.skipCurrentProcess())
+    phoSrc = cms.InputTag(srcPhoLabel,processName=cms.InputTag.skipCurrentProcess())
+    eleSrc = cms.InputTag(srcEleLabel,processName=cms.InputTag.skipCurrentProcess())
 
     eleSrc,phoSrc = _setupEgammaUpdatorMiniAOD(eleSrc=eleSrc,phoSrc=phoSrc,cfg=cfg)
     eleSrc,phoSrc = _setupEgammaEnergyCorrectionsMiniAOD(eleSrc=eleSrc,phoSrc=phoSrc,cfg=cfg)
@@ -423,12 +506,10 @@ def setupEgammaPostRecoSeq(process,
     if autoAdjustParams:
         pass #no auto adjustment needed
 
-    if isMiniAOD:
-        _setupEgammaPostRECOSequenceMiniAOD(process,applyEnergyCorrections=applyEnergyCorrections,applyVIDOnCorrectedEgamma=applyVIDOnCorrectedEgamma,era=era,runVID=runVID,runEnergyCorrections=runEnergyCorrections,applyEPCombBug=applyEPCombBug)
-    else:
-      #  _setupEgammaPostRECOSequence(process,applyEnergyCorrections=applyEnergyCorrections,applyVIDOnCorrectedEgamma=applyVIDOnCorrectedEgamma,era=era,runVID=runVID,runEnergyCorrections=runEnergyCorrections,applyEPCombBug=applyEPCombBug)
-        pass
+
+    _setupEgammaPostRECOSequenceMiniAOD(process,applyEnergyCorrections=applyEnergyCorrections,applyVIDOnCorrectedEgamma=applyVIDOnCorrectedEgamma,era=era,runVID=runVID,runEnergyCorrections=runEnergyCorrections,applyEPCombBug=applyEPCombBug,isMiniAOD=isMiniAOD)
     
+
     return process
 
 
