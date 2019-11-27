@@ -38,7 +38,7 @@ process.source = cms.Source("PoolSource",
 process.options = cms.untracked.PSet(
     numberOfStreams = cms.untracked.uint32(options.nrThreads),
     numberOfThreads = cms.untracked.uint32(options.nrThreads),
-    wantSummary = cms.untracked.bool(True)
+    wantSummary = cms.untracked.bool(False)
 )
 
 
@@ -65,7 +65,7 @@ from Configuration.AlCa.GlobalTag import GlobalTag
 process.GlobalTag = GlobalTag(process.GlobalTag, getGlobalTagName(isMC=options.isMC,era=options.era), '')
 
 
-from EgammaUser.EgammaPostRecoTools.EgammaPostRecoToolsV2 import setupEgammaPostRecoSeq
+from EgammaUser.EgammaPostRecoTools.EgammaPostRecoTools import setupEgammaPostRecoSeq
 setupEgammaPostRecoSeq(process,
                        applyEnergyCorrections=options.applyEnergyCorrections,
                        applyVIDOnCorrectedEgamma=options.applyVIDOnCorrectedEgamma,
