@@ -126,7 +126,7 @@ def run_live_tests():
             with open(test.output_file.replace(".root",".log"),'w') as f:
                 f.write("stdout:\n{}\n\n stderr:\n{}\n".format(out,err))
             if cmsrun_process.returncode != 0:
-                print "    FAILED due to runtime error {}".cmsrun_process.returncode
+                print "    FAILED due to runtime error {}".format(cmsrun_process.returncode)
             else:
                 print "    SUCCEEDED"
         else:
