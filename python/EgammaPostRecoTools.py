@@ -188,7 +188,9 @@ def _setupEgammaUpdator(eleSrc,phoSrc,cfg):
     process.egammaUpdatorTask = cms.Task()
 
     modifiers = cms.VPSet()
-    from RecoEgamma.EgammaTools.egammaObjectModificationsInMiniAOD_cff import egamma8XObjectUpdateModifier,egamma9X105XUpdateModifier
+    from RecoEgamma.EgammaTools.egammaObjectModificationsInMiniAOD_cff import egamma8XObjectUpdateModifier
+    if _isULDataformat():
+        from RecoEgamma.EgammaTools.egammaObjectModificationsInMiniAOD_cff import egamma9X105XUpdateModifier
 
     if _isInputFrom80X(cfg.era): 
         if not cfg.isMiniAOD:
