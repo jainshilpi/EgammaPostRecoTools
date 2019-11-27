@@ -175,7 +175,7 @@ class CfgData:
 
 ##end utility functions
 
-def _setupEgammaUpdatorMiniAOD(eleSrc,phoSrc,cfg):
+def _setupEgammaUpdator(eleSrc,phoSrc,cfg):
     """
     This function updates the electrons and photons to form the basis for VID/energy correction
     Examples are updates to new dataformats and applications of the energy regression
@@ -195,7 +195,7 @@ def _setupEgammaUpdatorMiniAOD(eleSrc,phoSrc,cfg):
             egamma8XObjectUpdateModifier.ecalRecHitsEB = cms.InputTag("reducedEcalRecHitsEB","")
             egamma8XObjectUpdateModifier.ecalRecHitsEE = cms.InputTag("reducedEcalRecHitsEE","")
         modifiers.append(egamma8XObjectUpdateModifier)
-    if _isInputFrom94XTo102X(cfg.era) and _isULDataformat(): 
+    if (_isInputFrom80X(cfg.era) or _isInputFrom94XTo102X(cfg.era)) and _isULDataformat(): 
         #we have to add the modules to produce the variables needed to update the to new dataformat to the task
         process.load('RecoEgamma.ElectronIdentification.heepIdVarValueMapProducer_cfi')
         process.load('RecoEgamma.PhotonIdentification.photonIDValueMapProducer_cff')
@@ -259,7 +259,7 @@ def _setupEgammaUpdatorMiniAOD(eleSrc,phoSrc,cfg):
         return cms.InputTag(eleSrc.value()),cms.InputTag(phoSrc.value())
 
                                           
-def _setupEgammaEnergyCorrectionsMiniAOD(eleSrc,phoSrc,cfg):
+def _setupEgammaEnergyCorrections(eleSrc,phoSrc,cfg):
     """sets up the e/gamma energy corrections for miniAOD
     it will adjust eleSrc and phoSrc to the correct values
 
@@ -311,7 +311,7 @@ def _setupEgammaEnergyCorrectionsMiniAOD(eleSrc,phoSrc,cfg):
         return cms.InputTag(eleSrc.value()),cms.InputTag(phoSrc.value())
     
         
-def _setupEgammaVIDMiniAOD(eleSrc,phoSrc,cfg):
+def _setupEgammaVID(eleSrc,phoSrc,cfg):
     process = cfg.process
     process.egammaVIDTask = cms.Task()
     if cfg.runVID:
@@ -365,7 +365,7 @@ def _setupEgammaVIDMiniAOD(eleSrc,phoSrc,cfg):
     return eleSrc,phoSrc
 
 
-def _setupEgammaEmbedderMiniAOD(eleSrc,phoSrc,cfg):
+def _setupEgammaEmbedder(eleSrc,phoSrc,cfg):
     from RecoEgamma.EgammaTools.egammaObjectModificationsInMiniAOD_cff import egamma_modifications,egamma8XLegacyEtScaleSysModifier
     from RecoEgamma.EgammaTools.egammaObjectModifications_tools import makeVIDBitsModifier,makeVIDinPATIDsModifier,makeEnergyScaleAndSmearingSysModifier  
     process = cfg.process
@@ -423,7 +423,7 @@ def _setupEgammaEmbedderMiniAOD(eleSrc,phoSrc,cfg):
     else:
         return cms.InputTag(eleSrc.value()),cms.InputTag(phoSrc.value())
 
-def _setupEgammaPostRECOSequenceMiniAOD(*args,**kwargs):
+def _setupEgammaPostRecoSeq(*args,**kwargs):
     """
     This function loads the calibrated producers calibratedPatElectrons,calibratedPatPhotons, 
     sets VID & other modules to the correct electron/photon source,
@@ -436,6 +436,9 @@ def _setupEgammaPostRECOSequenceMiniAOD(*args,**kwargs):
     2) running E/gamma scale and smearing
     3) running VID
     4) update of the post-vid object
+
+    Note the code has evolved (now dual miniAOD/AOD functions) so this function makes being seperate from 
+    setupEgammaPostRecoSeq makes less sense than it used to
     """
 
     cfg = CfgData(args,kwargs)
@@ -453,10 +456,10 @@ def _setupEgammaPostRECOSequenceMiniAOD(*args,**kwargs):
     phoSrc = cms.InputTag(srcPhoLabel,processName=cms.InputTag.skipCurrentProcess())
     eleSrc = cms.InputTag(srcEleLabel,processName=cms.InputTag.skipCurrentProcess())
 
-    eleSrc,phoSrc = _setupEgammaUpdatorMiniAOD(eleSrc=eleSrc,phoSrc=phoSrc,cfg=cfg)
-    eleSrc,phoSrc = _setupEgammaEnergyCorrectionsMiniAOD(eleSrc=eleSrc,phoSrc=phoSrc,cfg=cfg)
-    eleSrc,phoSrc = _setupEgammaVIDMiniAOD(eleSrc=eleSrc,phoSrc=phoSrc,cfg=cfg)
-    eleSrc,phoSrc = _setupEgammaEmbedderMiniAOD(eleSrc=eleSrc,phoSrc=phoSrc,cfg=cfg)
+    eleSrc,phoSrc = _setupEgammaUpdator(eleSrc=eleSrc,phoSrc=phoSrc,cfg=cfg)
+    eleSrc,phoSrc = _setupEgammaEnergyCorrections(eleSrc=eleSrc,phoSrc=phoSrc,cfg=cfg)
+    eleSrc,phoSrc = _setupEgammaVID(eleSrc=eleSrc,phoSrc=phoSrc,cfg=cfg)
+    eleSrc,phoSrc = _setupEgammaEmbedder(eleSrc=eleSrc,phoSrc=phoSrc,cfg=cfg)
     
     process = cfg.process
     
@@ -507,7 +510,7 @@ def setupEgammaPostRecoSeq(process,
         pass #no auto adjustment needed
 
 
-    _setupEgammaPostRECOSequenceMiniAOD(process,applyEnergyCorrections=applyEnergyCorrections,applyVIDOnCorrectedEgamma=applyVIDOnCorrectedEgamma,era=era,runVID=runVID,runEnergyCorrections=runEnergyCorrections,applyEPCombBug=applyEPCombBug,isMiniAOD=isMiniAOD)
+    _setupEgammaPostRecoSeq(process,applyEnergyCorrections=applyEnergyCorrections,applyVIDOnCorrectedEgamma=applyVIDOnCorrectedEgamma,era=era,runVID=runVID,runEnergyCorrections=runEnergyCorrections,applyEPCombBug=applyEPCombBug,isMiniAOD=isMiniAOD)
     
 
     return process
