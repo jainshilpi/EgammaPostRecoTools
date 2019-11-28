@@ -112,11 +112,13 @@ def make_test_cfgs(input_dir,output_dir):
     cfgMgr.add_test("EGamma__Run2018D-22Jan2019-v2__MINIAOD__323755-LS50__D8108B2A-213A-9B41-8AAA-C3DC3152FC6E.root",None,"2018-Prompt")
     return cfgMgr
 
-def run_live_tests():
+def run_live_tests(valid_eras=[]):
     test_cfgs = make_test_cfgs("/mercury/data1/harper/egammaTestFiles/","/mercury/data1/harper/egammaTestOutput/")
     cfg_file = "EgammaUser/EgammaPostRecoTools/test/runEgammaPostRecoTools.py"
-    base_options = "runVID=True runEnergyCorrections=True maxEvents=1000"
+    base_options = "runVID=True runEnergyCorrections=True maxEvents=5000"
     for test in test_cfgs.tests:
+        if valid_eras and test.era not in valid_eras:
+            continue
         cmd_base = "{{exec_name}} {cfg_file} inputFiles=file:{cfg.input_file} outputFile={cfg.output_file} era={cfg.era} isMC={cfg.is_mc} isMiniAOD={cfg.is_miniaod} {base_options}".format(cfg_file=cfg_file,cfg=test,base_options=base_options)
         print "running {}".format(cmd_base.format(exec_name="cmsRun"))
         out,err = subprocess.Popen(cmd_base.format(exec_name="python").split(),stdout=subprocess.PIPE,stderr=subprocess.PIPE).communicate()
@@ -133,8 +135,23 @@ def run_live_tests():
             print "    FAILED due to python errors: {}".format(err.replace("\n","\n     "))
             
 def main():
-    #run_static_tests()
-    run_live_tests()
+
+    parser = argparse.ArgumentParser(description='gives the files and optional picks the events given')
+    parser.add_argument('--static',action='store_true',help='run static tests')
+    parser.add_argument('--live',action='store_true',help='run live lests')
+    parser.add_argument('--eras','-e',default=None,help='eras for live tests, comma seperated')
+    args = parser.parse_args()
+
+    
+    if args.static:
+        run_static_tests()
+    if args.live:
+        valid_eras = []
+        if args.eras:
+            valid_eras = args.eras.split(',')
+
+        run_live_tests(valid_eras=valid_eras)
+
 if __name__ == '__main__':
     main()
     
