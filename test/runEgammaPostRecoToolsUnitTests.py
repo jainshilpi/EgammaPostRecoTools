@@ -117,6 +117,10 @@ def run_live_tests(input_dir,output_dir,valid_eras=[]):
     test_cfgs = make_test_cfgs(input_dir,output_dir)
     cfg_file = "EgammaUser/EgammaPostRecoTools/test/runEgammaPostRecoTools.py"
     base_options = "runVID=True runEnergyCorrections=True maxEvents=5000"
+
+    if not os.path.exists(output_dir):
+        os.makedirs(args.output_dir)
+
     for test in test_cfgs.tests:
         if valid_eras and test.era not in valid_eras:
             continue
