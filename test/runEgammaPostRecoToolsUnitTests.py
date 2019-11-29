@@ -119,7 +119,7 @@ def run_live_tests(input_dir,output_dir,valid_eras=[]):
     base_options = "runVID=True runEnergyCorrections=True maxEvents=5000"
 
     if not os.path.exists(output_dir):
-        os.makedirs(args.output_dir)
+        os.makedirs(output_dir)
 
     for test in test_cfgs.tests:
         if valid_eras and test.era not in valid_eras:
