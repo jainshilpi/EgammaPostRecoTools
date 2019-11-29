@@ -132,7 +132,6 @@ def _addMissingMVAValuesToUserData(process,egmod):
             addVar(egmod[1].electron_config,eleMVA['cat'])
     
     for phoMVA in phoMVAs:
-        print phoMVA
         if not hasattr(egmod[0].photon_config,phoMVA['val']['name']):
             addVar(egmod[0].photon_config,phoMVA['val'])
             addVar(egmod[1].photon_config,phoMVA['cat'])
@@ -153,8 +152,6 @@ class CfgData:
             'autoAdjustParams' : True,
             'process' : None
         }
-
-        print args,kwargs
        
         if len(args)>1: 
             raise Exception('error multiple unnamed parameters pass to EgammaPostRecoTools')
@@ -194,9 +191,20 @@ def _setupEgammaUpdator(eleSrc,phoSrc,cfg):
 
     if _isInputFrom80X(cfg.era): 
         if not cfg.isMiniAOD:
+            #this is here as a reminder when we fix this bug
             egamma8XObjectUpdateModifier.ecalRecHitsEB = cms.InputTag("reducedEcalRecHitsEB","")
             egamma8XObjectUpdateModifier.ecalRecHitsEE = cms.InputTag("reducedEcalRecHitsEE","")
-        modifiers.append(egamma8XObjectUpdateModifier)
+            print "EgammaPostRecoTools: begin warning:"
+            print "   when running in 80X AOD, currenly do not fill 94X new data members "
+            print "   members not filled: "
+            print "      eles: e2x5Left, e2x5Right, e2x5Top, e2x5Bottom, nSaturatedXtals, isSeedSaturated"
+            print "      phos: nStaturatedXtals, isSeedSaturated"
+            print "   these are needed for the 80X energy regression if you are running it (if you dont know if  you are, you are not)"
+            print "   the miniAOD method fills them correctly"
+            print "   if you have a use case for AOD and need those members, contact e/gamma pog and we can find a solution"
+            print "EgammaPostRecoTools: end warning"
+        else:
+            modifiers.append(egamma8XObjectUpdateModifier)
     if (_isInputFrom80X(cfg.era) or _isInputFrom94XTo102X(cfg.era)) and _isULDataformat(): 
         #we have to add the modules to produce the variables needed to update the to new dataformat to the task
         process.load('RecoEgamma.ElectronIdentification.heepIdVarValueMapProducer_cfi')
@@ -317,8 +325,13 @@ def _setupEgammaVID(eleSrc,phoSrc,cfg):
     process = cfg.process
     process.egammaVIDTask = cms.Task()
     if cfg.runVID:
+        #heep value map needs to be manually added to the task
+        if not _isULDataformat():
+            import RecoEgamma.ElectronIdentification.Identification.heepElectronID_tools as heep_tools
+            heep_tools.addHEEPProducersToSeq(process,cms.Sequence(),cfg.isMiniAOD,process.egammaVIDTask)
         process.egammaVIDTask.add(process.egmGsfElectronIDTask)
         process.egammaVIDTask.add(process.egmPhotonIDTask)
+      
         
         process.egmGsfElectronIDs.physicsObjectSrc = eleSrc
         process.egmPhotonIDs.physicsObjectSrc = phoSrc
@@ -362,7 +375,9 @@ def _setupEgammaVID(eleSrc,phoSrc,cfg):
                 process.photonIDValueMapProducer.srcMiniAOD = cms.InputTag("")
                 if hasattr(process,'heepIDVarValueMaps'):
                     process.heepIDVarValueMaps.elesAOD = eleSrc
-                    process.heepIDVarValueMaps.dataFormat = 1
+                    process.heepIDVarValueMaps.dataFormat = 1   
+                if hasattr(process,'packedCandsForTkIso') and cfg.era.find("2016")!=-1:
+                    process.packedCandsForTkIso.chargedHadronIsolation = ""          
 
     return eleSrc,phoSrc
 
@@ -392,11 +407,12 @@ def _setupEgammaEmbedder(eleSrc,phoSrc,cfg):
     if cfg.runVID:
         #MVA V2 values may not be added by default due to data format consistency issues
         _addMissingMVAValuesToUserData(process,egamma_modifications)
-        #now add HEEP trk isolation
-        #for pset in egamma_modifications:
-        #    if pset.hasParameter("modifierName") and pset.modifierName == cms.string('EGExtraInfoModifierFromFloatValueMaps'):
-         #       pset.electron_config.heepTrkPtIso = cms.InputTag("heepIDVarValueMaps","eleTrkPtIso")
-          #      break
+        #now add HEEP trk isolation if old dataformat (new its in the object proper)
+        if not _isULDataformat():
+            for pset in egamma_modifications:
+                if pset.hasParameter("modifierName") and pset.modifierName == cms.string('EGExtraInfoModifierFromFloatValueMaps'):
+                    pset.electron_config.heepTrkPtIso = cms.InputTag("heepIDVarValueMaps","eleTrkPtIso")
+                    break
 
     for pset in egamma_modifications:
         pset.overrideExistingValues = cms.bool(True)
