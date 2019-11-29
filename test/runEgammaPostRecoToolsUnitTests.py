@@ -113,8 +113,8 @@ def make_test_cfgs(input_dir,output_dir):
     cfgMgr.add_test("EGamma__Run2018D-22Jan2019-v2__MINIAOD__323755-LS50__D8108B2A-213A-9B41-8AAA-C3DC3152FC6E.root",None,"2018-Prompt")
     return cfgMgr
 
-def run_live_tests(valid_eras=[]):
-    test_cfgs = make_test_cfgs("/mercury/data1/harper/egammaTestFiles/","/mercury/data1/harper/egammaTestOutput/")
+def run_live_tests(input_dir,output_dir,valid_eras=[]):
+    test_cfgs = make_test_cfgs(input_dir,output_dir)
     cfg_file = "EgammaUser/EgammaPostRecoTools/test/runEgammaPostRecoTools.py"
     base_options = "runVID=True runEnergyCorrections=True maxEvents=5000"
     for test in test_cfgs.tests:
@@ -126,12 +126,14 @@ def run_live_tests(valid_eras=[]):
         if err=="":
             cmsrun_process = subprocess.Popen(cmd_base.format(exec_name="cmsRun").split(),stdout=subprocess.PIPE,stderr=subprocess.PIPE)
             out,err = cmsrun_process.communicate()
-            with open(test.output_file.replace(".root",".log"),'w') as f:
+            log_file = test.output_file.replace(".root",".log") 
+            with open(log_file,'w') as f:
                 f.write("stdout:\n{}\n\n stderr:\n{}\n".format(out,err))
             if cmsrun_process.returncode != 0:
                 print "    FAILED due to runtime error {}".format(cmsrun_process.returncode)
+                print "       log file: {}".format(log_file)
             else:
-                print "    SUCCEEDED"
+                print "    SUCCEEDED : log {}".format(log_file)
         else:
             print "    FAILED due to python errors: {}".format(err.replace("\n","\n     "))
             
@@ -141,6 +143,8 @@ def main():
     parser.add_argument('--static',action='store_true',help='run static tests')
     parser.add_argument('--live',action='store_true',help='run live lests')
     parser.add_argument('--eras','-e',default=None,help='eras for live tests, comma seperated')
+    parser.add_argument('--input_dir','-i',default="./",help='input directory')
+    parser.add_argument('--output_dir','-o',default="./",help='output directory')
     args = parser.parse_args()
 
     
@@ -151,7 +155,7 @@ def main():
         if args.eras:
             valid_eras = args.eras.split(',')
 
-        run_live_tests(valid_eras=valid_eras)
+        run_live_tests(input_dir=args.input_dir,output_dir=args.output_dir,valid_eras=valid_eras)
 
 if __name__ == '__main__':
     main()
