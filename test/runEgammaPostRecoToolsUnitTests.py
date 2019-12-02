@@ -55,9 +55,7 @@ def run_static_tests():
 
     for cmd_str in all_cmd_strs:
         if is_valid_option_combination(cmd_str):
-            print cmd_str
             out,err=subprocess.Popen(cmd_str.split(),stdout=subprocess.PIPE,stderr=subprocess.PIPE).communicate()
-            #        print out
             
             test_pass = err==""
 
@@ -108,7 +106,7 @@ def make_test_cfgs(input_dir,output_dir):
     cfgMgr.add_test("DYJetsToLL_M-50_TuneCUETP8M1_13TeV-madgraphMLM-pythia8__RunIISummer16MiniAODv3__PUMoriond17_94X_mcRun2_asymptotic_v3_ext2-v2__MINIAODSIM__6E4F708B-31E9-E811-8E79-44A84225C827.root",None,"2016-Legacy")
     cfgMgr.add_test("DoubleEG__Run2016H-07Aug17-v1__MINIAOD__283884-LS365__6E41299F-F792-E711-9D14-0425C5903034.root",None,"2016-Legacy")
     cfgMgr.add_test("DoubleEG__Run2017E-09Aug2019_UL2017-v1__MINIAOD__304333-LS120__47AF3530-5F96-8341-A53B-035825F454AE.root",None,"2017-UL")
-    cfgMgr.add_test("DoubleEG__Run2017E-17Nov2017-v1__MINIAOD__304333-LS120__FEBB1201-C3D5-E711-A803-7845C4FC3C56.root",None,"2017-Nov17Reco")
+    cfgMgr.add_test("DoubleEG__Run2017E-17Nov2017-v1__MINIAOD__304333-LS120__FEBB1201-C3D5-E711-A803-7845C4FC3C56.root",None,"2017-Nov17ReReco")
     cfgMgr.add_test("EGamma__Run2018D-22Jan2019-v2__AOD__323755-LS50__CEEBC4AC-EA40-7644-A167-73C8AE7D79D0.root",None,"2018-Prompt")
     cfgMgr.add_test("EGamma__Run2018D-22Jan2019-v2__MINIAOD__323755-LS50__D8108B2A-213A-9B41-8AAA-C3DC3152FC6E.root",None,"2018-Prompt")
     return cfgMgr
