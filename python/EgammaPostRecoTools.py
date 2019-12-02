@@ -78,7 +78,7 @@ else:
     print "EgammaPostRecoTools: Fall17V2 cut based Photons ID modules not found, running ID without them. If you want Fall17V2 CutBased Photon IDs, please merge the approprate PR\n  94X:  git cms-merge-topic cms-egamma/EgammaID_949\n  102X: git cms-merge-topic cms-egamma/EgammaID_1023"
 
 def _check_valid_era(era):
-    valid_eras = ['2017-Nov17ReReco','2016-Legacy','2016-Feb17ReMiniAOD','2018-Prompt']
+    valid_eras = ['2017-Nov17ReReco','2016-Legacy','2016-Feb17ReMiniAOD','2018-Prompt','2017-UL']
     if era not in valid_eras:
         raise RuntimeError('error, era {} not in list of allowed eras {}'.format(value,str(valid_eras)))
     return True
@@ -94,6 +94,8 @@ def _getEnergyCorrectionFile(era):
         raise RuntimeError('Error in postRecoEgammaTools, era 2016-Feb17ReMiniAOD is not currently implimented')
     if era=="2018-Prompt":
         return "EgammaAnalysis/ElectronTools/data/ScalesSmearings/Run2018_Step2Closure_CoarseEtaR9Gain_v2"
+    if era=="2017-UL":
+        raise RuntimeError('Error in postRecoEgammaTools, era 2017-UL does not yet have energy corrections, please contact the e/gamma pog for more information')
     raise LogicError('Error in postRecoEgammaTools, era '+era+' not added to energy corrections function, please update this function')
 
 def _isInputFrom80X(era):
@@ -525,7 +527,10 @@ def setupEgammaPostRecoSeq(process,
             setupAllVIDIdsInModule(process,idmod,setupVIDPhotonSelection)
 
     if autoAdjustParams:
-        pass #no auto adjustment needed
+        if era=="2017-UL" and runEnergyCorrections:
+            print "EgammaPostRecoTools:INFO auto adjusting runEnergyCorrections to False as they are not yet availible for 2017-UL, set autoAdjustParams = False to force them to run"
+            runEnergyCorrections = False
+
 
 
     _setupEgammaPostRecoSeq(process,applyEnergyCorrections=applyEnergyCorrections,applyVIDOnCorrectedEgamma=applyVIDOnCorrectedEgamma,era=era,runVID=runVID,runEnergyCorrections=runEnergyCorrections,applyEPCombBug=applyEPCombBug,isMiniAOD=isMiniAOD)
