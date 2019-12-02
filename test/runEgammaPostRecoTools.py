@@ -52,8 +52,11 @@ def getGlobalTagName(isMC,era):
     elif era=='2016-Legacy':
         if isMC: return '94X_mcRun2_asymptotic_v3'
         else: return '94X_dataRun2_v10'
+    elif era=='2017-UL':
+        if isMC: return '106X_mc2017_realistic_v6'
+        else: return '106X_dataRun2_v20'
     else:
-        raise RuntimeError('Error in runPostRecoEgammaTools, era {} not currently implimented. Allowed eras are 2018-Prompt 2017-Nov17ReReco 2016-Legacy'.format(era)) 
+        raise RuntimeError('Error in runPostRecoEgammaTools, era {} not currently implimented. Allowed eras are 2018-Prompt 2017-Nov17ReReco 2016-Legacy 2017-UL'.format(era)) 
     
 
 process.load("Configuration.Geometry.GeometryRecoDB_cff")
