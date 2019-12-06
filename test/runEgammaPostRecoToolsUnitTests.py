@@ -111,7 +111,7 @@ def make_test_cfgs(input_dir,output_dir):
     cfgMgr.add_test("EGamma__Run2018D-22Jan2019-v2__MINIAOD__323755-LS50__D8108B2A-213A-9B41-8AAA-C3DC3152FC6E.root",None,"2018-Prompt")
     return cfgMgr
 
-def run_live_tests(input_dir,output_dir,valid_eras=[]):
+def run_live_tests(input_dir,output_dir,valid_eras=[],only_mini=False):
     test_cfgs = make_test_cfgs(input_dir,output_dir)
     cfg_file = "EgammaUser/EgammaPostRecoTools/test/runEgammaPostRecoTools.py"
     base_options = "runVID=True runEnergyCorrections=True maxEvents=5000"
@@ -122,6 +122,9 @@ def run_live_tests(input_dir,output_dir,valid_eras=[]):
     for test in test_cfgs.tests:
         if valid_eras and test.era not in valid_eras:
             continue
+        if only_mini and not test.is_miniaod:
+            continue
+
         cmd_base = "{{exec_name}} {cfg_file} inputFiles=file:{cfg.input_file} outputFile={cfg.output_file} era={cfg.era} isMC={cfg.is_mc} isMiniAOD={cfg.is_miniaod} {base_options}".format(cfg_file=cfg_file,cfg=test,base_options=base_options)
         print "running {}".format(cmd_base.format(exec_name="cmsRun"))
         out,err = subprocess.Popen(cmd_base.format(exec_name="python").split(),stdout=subprocess.PIPE,stderr=subprocess.PIPE).communicate()
@@ -147,6 +150,7 @@ def main():
     parser.add_argument('--eras','-e',default=None,help='eras for live tests, comma seperated')
     parser.add_argument('--input_dir','-i',default="./",help='input directory')
     parser.add_argument('--output_dir','-o',default="./",help='output directory')
+    parser.add_argument('--only_mini',action='store_true',help='only run miniAOD tests')
     args = parser.parse_args()
 
     
@@ -157,7 +161,7 @@ def main():
         if args.eras:
             valid_eras = args.eras.split(',')
 
-        run_live_tests(input_dir=args.input_dir,output_dir=args.output_dir,valid_eras=valid_eras)
+        run_live_tests(input_dir=args.input_dir,output_dir=args.output_dir,valid_eras=valid_eras,only_mini=args.only_mini)
 
 if __name__ == '__main__':
     main()

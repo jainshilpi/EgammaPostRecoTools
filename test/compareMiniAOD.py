@@ -4,73 +4,10 @@ import ROOT
 import os
 import glob
 import argparse
+import hashlib
 from DataFormats.FWLite import Events, Handle
  
-
-class EleDiffSummary:
-    def __init__(self):
-        self.min_diff_value = 0.0001
-        self.vars_ = {}
-        self.user_floats = {}
-        self.user_ints = {}
-        self.ids = {}
-        self.nrtot = 0
-        self.nrdiff = 0
-        self.nrnotfound = 0
-
-
-    def add_diff(self,diffs,name,ele,val,diff_val):
-        if name not in diffs: 
-            diffs[name]=[]    
-        diffs[name].append({'et' : ele.et(), 'eta' : ele.eta(), 'phi' : ele.phi() , 'val' : val,'diff' : diff_val})
-
-
-    def fill(self,ele1,ele2):   
-        self.nrtot +=1
-        if ele2 == None:
-            print "ele ",ele.et(),ele.eta(),ele.phi(),"not found"
-            self.nrnotfound +=1
-            return True
-
-        diff = False
-        for name in ele1.userFloatNames():
-            vars_to_skip = ["ecalTrkEnergyErrPostCorr","ecalTrkEnergyPostCorr","energyScaleDown","energyScaleGainDown","energyScaleGainUp","energyScaleStatDown","energyScaleStatUp","energyScaleSystDown","energyScaleSystUp","energyScaleUp","energySigmaDown","energySigmaPhiDown","energySigmaPhiUp","energySigmaRhoDown","energySigmaRhoUp","energySigmaUp"]
-            vars_to_skip =[]
-            if name in vars_to_skip: continue
-        
-            if name not in ele2.userFloatNames(): continue
-            diff_val = ele1.userFloat(name)-ele2.userFloat(name)
-            if abs(diff_val)>self.min_diff_value:
-                self.add_diff(self.user_floats,name,ele1,ele1.userFloat(name),diff_val)
-                diff = True
-        
-        for name in ele1.userIntNames():
-            if name not in ele2.userIntNames(): continue
-            if ele1.userInt(name)!=ele2.userInt(name):               
-                self.add_diff(self.user_ints,name,ele1,ele1.userInt(name),ele1.userInt(name)-ele2.userInt(name))
-                diff = True
-
-        vars_to_check = ["ecalEnergy","ecalEnergyError","eta","phi"]
-        for var in vars_to_check:
-            diff_val = getattr(ele1,var)()-getattr(ele2,var)()
-            if abs(diff_val)>self.min_diff_value:
-                print "diff ele {:.1f}, {:.2f}, {:.2f} :".format(ele1.et(),ele1.eta(),ele1.phi()),var,getattr(ele1,var)(),getattr(ele2,var)()
-                self.add_diff(self.vars_,ele1,var,getattr(ele1,var)(),diff_val)
-                diff = True
-
-        for ele_id in ele1.electronIDs():
-            if ele2.isElectronIDAvailable(ele_id.first)==False: continue
-            if ele_id.second != ele2.electronID(ele_id.first):
-                print "diff ele {:.1f}, {:.2f}, {:.2f} : ID".format(ele1.et(),ele1.eta(),ele1.phi()),ele_id.first,ele_id.second,ele2.electronID(ele_id.first)
-                self.add_diff(self.ids,ele_id.first,ele1,ele_id.second,ele_id.second-ele2.electronID(ele_id.first))
-                diff = True
-
-        if diff:
-            self.nrdiff +=1
-        return diff
-        
-
-class PhoDiffSummary:
+class DiffSummary(object):
     def __init__(self):
         self.min_diff_value = 0.0001
         self.vars_ = {}
@@ -101,7 +38,7 @@ class PhoDiffSummary:
             canvas.SetLogy()
             hist = self.create_hist(var,diff_data)
             hist.Draw()
-            out_name = "{}_{}.png".format(out_dir,var)
+            out_name = "{}_{}.png".format(out_tag,var)
             canvas.Print("{}/{}".format(out_dir,out_name))
             diff_strs.append("   var {} has {} differences<br>".format(var,len(diff_data)))
             diff_strs.append("<a href={pngfile}><img class=\"image\" width=\"500\" src={pngfile} ALIGH=TOP></a><br>".format(pngfile=out_name))
@@ -123,6 +60,58 @@ class PhoDiffSummary:
 
         return "\n".join(diff_strs)
 
+class EleDiffSummary(DiffSummary):
+
+    def add_diff(self,diffs,name,ele,val,diff_val):
+        if name not in diffs: 
+            diffs[name]=[]    
+        diffs[name].append({'et' : ele.et(), 'eta' : ele.eta(), 'phi' : ele.phi() , 'val' : val,'diff' : diff_val})
+
+    def fill(self,ele1,ele2):   
+        self.nrtot +=1
+        if ele2 == None:
+            print "ele ",ele.et(),ele.eta(),ele.phi(),"not found"
+            self.nrnotfound +=1
+            return True
+
+        diff = False
+        for name in ele1.userFloatNames():
+            vars_to_skip = ["ecalTrkEnergyErrPostCorr","ecalTrkEnergyPostCorr","energyScaleDown","energyScaleGainDown","energyScaleGainUp","energyScaleStatDown","energyScaleStatUp","energyScaleSystDown","energyScaleSystUp","energyScaleUp","energySigmaDown","energySigmaPhiDown","energySigmaPhiUp","energySigmaRhoDown","energySigmaRhoUp","energySigmaUp"]
+            vars_to_skip =[]
+            if name in vars_to_skip: continue
+        
+            if name not in ele2.userFloatNames(): continue
+            diff_val = ele1.userFloat(name)-ele2.userFloat(name)
+            if abs(diff_val)>self.min_diff_value:
+                self.add_diff(self.user_floats,name,ele1,ele1.userFloat(name),diff_val)
+                diff = True
+        
+        for name in ele1.userIntNames():
+            if name not in ele2.userIntNames(): continue
+            if ele1.userInt(name)!=ele2.userInt(name):               
+                self.add_diff(self.user_ints,name,ele1,ele1.userInt(name),ele1.userInt(name)-ele2.userInt(name))
+                diff = True
+
+        vars_to_check = ["ecalEnergy","ecalEnergyError","eta","phi"]
+        for var in vars_to_check:
+            diff_val = getattr(ele1,var)()-getattr(ele2,var)()
+            if abs(diff_val)>self.min_diff_value:
+                self.add_diff(self.vars_,ele1,var,getattr(ele1,var)(),diff_val)
+                diff = True
+
+        for ele_id in ele1.electronIDs():
+            if ele2.isElectronIDAvailable(ele_id.first)==False: continue
+            if ele_id.second != ele2.electronID(ele_id.first):
+                self.add_diff(self.ids,ele_id.first,ele1,ele_id.second,ele_id.second-ele2.electronID(ele_id.first))
+                diff = True
+
+        if diff:
+            self.nrdiff +=1
+        return diff
+        
+
+class PhoDiffSummary(DiffSummary):
+   
     def add_diff(self,diffs,name,pho,val,diff_val):
         if name not in diffs: 
             diffs[name]=[]    
@@ -156,7 +145,6 @@ class PhoDiffSummary:
         for var in vars_to_check:
             diff_val = getattr(pho1,var)()-getattr(pho2,var)()
             if abs(diff_val)>self.min_diff_value:
-                print "diff pho {:.1f}, {:.2f}, {:.2f} :".format(pho1.et(),pho1.eta(),pho1.phi()),var,getattr(pho1,var)(),getattr(pho2,var)()
                 self.add_diff(self.vars_,pho1,var,getattr(pho1,var)(),diff_val)
                 diff = True
 
@@ -245,12 +233,20 @@ def compare(target_file,ref_file,file_prefix="file:",out_dir="./"):
 
     target_path_file = os.path.split(target_file)
     ref_path_file = os.path.split(ref_file)
+
+    hashstr = hashlib.md5(target_file).hexdigest()
+    out_tag_phos = "pho_{}".format(hashstr)
+    out_tag_eles = "ele_{}".format(hashstr)
+
+
     comp_strs = []
-    comp_strs.append("file = {}<br>".format(target_path_file[1]))
+    comp_strs.append("<br><br>file = {}<br>".format(target_path_file[1]))
     comp_strs.append("target dir = {}<br>".format(target_path_file[0]))
     comp_strs.append("reference dir = {}<br>".format(ref_path_file[0]))
     comp_strs.append("Photons<br>")
-    comp_strs.append(pho_diffs.create_summary(out_dir,target_path_file[1].replace(".root","")))
+    comp_strs.append(pho_diffs.create_summary(out_dir,out_tag_phos))
+    comp_strs.append("Electrons<br>")
+    comp_strs.append(ele_diffs.create_summary(out_dir,out_tag_eles))
     #    pho_diffs.create_summary(out_dir)
     return '\n'.join(comp_strs)
 

@@ -97,7 +97,10 @@ class PhoTreeData:
         for indx,name in enumerate(self.pho_data_names):
             self.pho_data[indx] = getattr(pho,name)()
         for indx,name in enumerate(self.pho_userfloat_names):
-            self.pho_userfloat[indx] = pho.userFloat(name)
+            if pho.hasUserFloat(name):
+                self.pho_userfloat[indx] = pho.userFloat(name)
+            else:
+                self.pho_userfloat[indx] = -999.
         for indx,name in enumerate(self.pho_userint_names):
             self.pho_userint[indx] = pho.userInt(name)
         for indx,name in enumerate(self.pho_id_names):
@@ -105,41 +108,44 @@ class PhoTreeData:
 
         self.tree.Fill()
 
-oldargv = sys.argv[:]
-sys.argv = [ '-b-' ]
-ROOT.gROOT.SetBatch(True)
-sys.argv = oldargv
-ROOT.gSystem.Load("libFWCoreFWLite.so");
-ROOT.gSystem.Load("libDataFormatsFWLite.so");
-ROOT.FWLiteEnabler.enable()
+def main():
+    oldargv = sys.argv[:]
+    sys.argv = [ '-b-' ]
+    ROOT.gROOT.SetBatch(True)
+    sys.argv = oldargv
+    ROOT.gSystem.Load("libFWCoreFWLite.so");
+    ROOT.gSystem.Load("libDataFormatsFWLite.so");
+    ROOT.FWLiteEnabler.enable()
 
-parser = argparse.ArgumentParser(description='prints E/gamma pat::Electrons/Photons us')
-parser.add_argument('in_filename',help='input filename')
-parser.add_argument('out_filename',help='output filename')
-parser.add_argument('--min_pho_et','-p',default=20.,type=float,help='minimum photon et')
-parser.add_argument('--min_ele_et','-e',default=20.,type=float,help='minimum electron et')
-args = parser.parse_args()
+    parser = argparse.ArgumentParser(description='prints E/gamma pat::Electrons/Photons us')
+    parser.add_argument('in_filename',help='input filename')
+    parser.add_argument('out_filename',help='output filename')
+    parser.add_argument('--min_pho_et','-p',default=20.,type=float,help='minimum photon et')
+    parser.add_argument('--min_ele_et','-e',default=20.,type=float,help='minimum electron et')
+    args = parser.parse_args()
 
-eles, ele_label = Handle("std::vector<pat::Electron>"), "slimmedElectrons"
-phos, pho_label = Handle("std::vector<pat::Photon>"), "slimmedPhotons"
+    eles, ele_label = Handle("std::vector<pat::Electron>"), "slimmedElectrons"
+    phos, pho_label = Handle("std::vector<pat::Photon>"), "slimmedPhotons"
 
 
-out_file = ROOT.TFile(args.out_filename,"RECREATE")
-ele_tree = EleTreeData('eleTree')
-pho_tree = PhoTreeData('phoTree')
+    out_file = ROOT.TFile(args.out_filename,"RECREATE")
+    ele_tree = EleTreeData('eleTree')
+    pho_tree = PhoTreeData('phoTree')
 
-events = Events(args.in_filename)
-for event_nr,event in enumerate(events):
-    
-    event.getByLabel(pho_label,phos)
-    
-    for pho_nr,pho in enumerate(phos.product()):  
-        if pho.et()>=args.min_pho_et: 
-            pho_tree.fill(pho,event)
+    events = Events(args.in_filename)
+    for event_nr,event in enumerate(events):
+        
+        event.getByLabel(pho_label,phos)
+        for pho_nr,pho in enumerate(phos.product()):  
+            if pho.et()>=args.min_pho_et: 
+                pho_tree.fill(pho,event)
 
-    event.getByLabel(ele_label,eles)
-    for ele_nr,ele in enumerate(eles.product()):
-        if ele.et()>=args.min_ele_et: 
-            ele_tree.fill(ele,event)
+        event.getByLabel(ele_label,eles)
+        for ele_nr,ele in enumerate(eles.product()):
+            if ele.et()>=args.min_ele_et: 
+                ele_tree.fill(ele,event)
+            
+    out_file.Write()
 
-out_file.Write()
+if __name__ == "__main__":
+    main()
