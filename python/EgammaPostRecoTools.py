@@ -190,6 +190,8 @@ def _setupEgammaUpdator(eleSrc,phoSrc,cfg):
     from RecoEgamma.EgammaTools.egammaObjectModificationsInMiniAOD_cff import egamma8XObjectUpdateModifier
     if _isULDataformat():
         from RecoEgamma.EgammaTools.egammaObjectModificationsInMiniAOD_cff import egamma9X105XUpdateModifier
+        if _isInputFrom80X(cfg.era):
+            egamma9X105XUpdateModifier.allowGsfTrackForConvs = True
 
     if _isInputFrom80X(cfg.era): 
         if not cfg.isMiniAOD:
@@ -264,6 +266,7 @@ def _setupEgammaUpdator(eleSrc,phoSrc,cfg):
                                                      )
                                                  )
         )
+        print getattr(process,updatedEleName).dumpPython()
         process.egammaUpdatorTask.add(getattr(process,updatedEleName))
         process.egammaUpdatorTask.add(getattr(process,updatedPhoName))
         return cms.InputTag(updatedEleName),cms.InputTag(updatedPhoName)
