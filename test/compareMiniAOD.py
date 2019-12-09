@@ -61,6 +61,8 @@ class DiffSummary(object):
         return "\n".join(diff_strs)
 
 class EleDiffSummary(DiffSummary):
+    _vars_to_check = ["et","eta","phi","pfIsolationVariables.sumChargedHadronPt","pfIsolationVariables.sumNeutralHadronEt","pfIsolationVariables.sumPhotonEt","pfIsolationVariables.sumChargedParticlePt","pfIsolationVariables.sumNeutralHadronEtHighThreshold","pfIsolationVariables.sumPhotonEtHighThreshold","pfIsolationVariables.sumPUPt","scPixCharge","isGsfCtfScPixChargeConsistent","isGsfScPixChargeConsistent","isGsfCtfChargeConsistent","isElectron","ctfGsfOverlap","ecalDrivenSeed","trackerDrivenSeed","shFracInnerHits","eSuperClusterOverP","eSeedClusterOverP","eSeedClusterOverPout","eEleClusterOverPout","deltaEtaSuperClusterTrackAtVtx","deltaEtaSeedClusterTrackAtCalo","deltaEtaEleClusterTrackAtCalo","deltaPhiSuperClusterTrackAtVtx","deltaPhiSeedClusterTrackAtCalo","deltaPhiEleClusterTrackAtCalo","deltaEtaSeedClusterTrackAtVtx","basicClustersSize","isEB","isEE","isGap","isEBEEGap","isEBGap","isEBEtaGap","isEBPhiGap","isEEGap","isEEDeeGap","isEERingGap","sigmaEtaEta","sigmaIetaIeta","sigmaIphiIphi","e1x5","e2x5Max","e5x5","r9","hcalDepth1OverEcal","hcalDepth2OverEcal","hcalOverEcal","hcalDepth1OverEcalBc","hcalDepth2OverEcalBc","hcalOverEcalBc","eLeft","eRight","eTop","eBottom","full5x5_sigmaEtaEta","full5x5_sigmaIetaIeta","full5x5_sigmaIphiIphi","full5x5_e1x5","full5x5_e2x5Max","full5x5_e5x5","full5x5_r9","full5x5_hcalDepth1OverEcal","full5x5_hcalDepth2OverEcal","full5x5_hcalOverEcal","full5x5_hcalDepth1OverEcalBc","full5x5_hcalDepth2OverEcalBc","full5x5_hcalOverEcalBc","full5x5_eLeft","full5x5_eRight","full5x5_eTop","full5x5_eBottom","scSigmaEtaEta","scSigmaIEtaIEta","scE1x5","scE2x5Max","scE5x5","hadronicOverEm","hadronicOverEm1","hadronicOverEm2","nSaturatedXtals","isSeedSaturated","dr03TkSumPt","dr03EcalRecHitSumEt","dr03HcalDepth1TowerSumEt","dr03HcalDepth2TowerSumEt","dr03HcalTowerSumEt","dr03HcalDepth1TowerSumEtBc","dr03HcalDepth2TowerSumEtBc","dr03HcalTowerSumEtBc","dr04TkSumPt","dr04EcalRecHitSumEt","dr04HcalDepth1TowerSumEt","dr04HcalDepth2TowerSumEt","dr04HcalTowerSumEt","dr04HcalDepth1TowerSumEtBc","dr04HcalDepth2TowerSumEtBc","dr04HcalTowerSumEtBc","convFlags","convDist","convDcot","convRadius","mva_Isolated","mva_e_pi","ecalDriven","passingCutBasedPreselection","passingPflowPreselection","ambiguous","passingMvaPreselection","trackFbrem","superClusterFbrem","numberOfBrems","fbrem","isEcalEnergyCorrected","correctedEcalEnergy","correctedEcalEnergyError","trackMomentumError","ecalEnergy","ecalEnergyError","caloEnergy","isEnergyScaleCorrected","pixelMatchSubdetector1","pixelMatchSubdetector2","pixelMatchDPhi1","pixelMatchDPhi2","pixelMatchDRz1","pixelMatchDRz2","full5x5_e2x5Left","full5x5_e2x5Right","full5x5_e2x5Top","full5x5_e2x5Bottom"]
+
 
     def add_diff(self,diffs,name,ele,val,diff_val):
         if name not in diffs: 
@@ -92,11 +94,20 @@ class EleDiffSummary(DiffSummary):
                 self.add_diff(self.user_ints,name,ele1,ele1.userInt(name),ele1.userInt(name)-ele2.userInt(name))
                 diff = True
 
-        vars_to_check = ["ecalEnergy","ecalEnergyError","eta","phi"]
-        for var in vars_to_check:
-            diff_val = getattr(ele1,var)()-getattr(ele2,var)()
+        for var in EleDiffSummary._vars_to_check:
+            if var.find(".")==-1:
+                val1 = getattr(ele1,var)()
+                val2 = getattr(ele2,var)()
+            else:
+                var_split = var.split(".")
+                if len(var_split)>2:
+                    raise Exception("EgammaPostRecoTools:warning var {} has more than two layers, only a single . is supported".format(var))
+                val1 = getattr(getattr(ele1,var_split[0])(),var_split[1])
+                val2 = getattr(getattr(ele2,var_split[0])(),var_split[1])
+                
+            diff_val = val1-val2
             if abs(diff_val)>self.min_diff_value:
-                self.add_diff(self.vars_,ele1,var,getattr(ele1,var)(),diff_val)
+                self.add_diff(self.vars_,var,ele1,val1,diff_val)
                 diff = True
 
         for ele_id in ele1.electronIDs():
@@ -111,7 +122,8 @@ class EleDiffSummary(DiffSummary):
         
 
 class PhoDiffSummary(DiffSummary):
-   
+    _vars_to_check = ["et","energy","eta","phi"]
+
     def add_diff(self,diffs,name,pho,val,diff_val):
         if name not in diffs: 
             diffs[name]=[]    
@@ -141,11 +153,21 @@ class PhoDiffSummary(DiffSummary):
                 self.add_diff(self.user_ints,name,pho1,pho1.userInt(name),pho1.userInt(name)-pho2.userInt(name))
                 diff = True
 
-        vars_to_check = ["et","energy","eta","phi"]
-        for var in vars_to_check:
-            diff_val = getattr(pho1,var)()-getattr(pho2,var)()
+
+        for var in PhoDiffSummary._vars_to_check:         
+            if var.find(".")==-1:
+                val1 = getattr(pho1,var)()
+                val2 = getattr(pho2,var)()
+            else:
+                var_split = var.split(".")
+                if len(var_split)>2:
+                    raise Exception("EgammaPostRecoTools:warning var {} has more than two layers, only a single . is supported".format(var))
+                val1 = getattr(getattr(pho1,var_split[0])(),var_split[1])
+                val2 = getattr(getattr(pho2,var_split[0])(),var_split[1])
+
+            diff_val = val1 - val2
             if abs(diff_val)>self.min_diff_value:
-                self.add_diff(self.vars_,pho1,var,getattr(pho1,var)(),diff_val)
+                self.add_diff(self.vars_,var,pho1,val1,diff_val)
                 diff = True
 
         for pho_id in pho1.photonIDs():
@@ -278,7 +300,7 @@ def main():
     target_refs = []
     if not os.path.exists(args.target) or os.path.isdir(args.target):
         if os.path.isdir(args.target):
-            pattern = "{}/*.root".format(args.target)
+            pattern = "{}/*MINIAOD*EDM.root".format(args.target)
         else:
             pattern = args.target
         
