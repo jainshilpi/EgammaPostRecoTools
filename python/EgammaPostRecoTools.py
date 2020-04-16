@@ -78,7 +78,7 @@ else:
     print "EgammaPostRecoTools: Fall17V2 cut based Photons ID modules not found, running ID without them. If you want Fall17V2 CutBased Photon IDs, please merge the approprate PR\n  94X:  git cms-merge-topic cms-egamma/EgammaID_949\n  102X: git cms-merge-topic cms-egamma/EgammaID_1023"
 
 def _check_valid_era(era):
-    valid_eras = ['2017-Nov17ReReco','2016-Legacy','2016-Feb17ReMiniAOD','2018-Prompt','2017-UL']
+    valid_eras = ['2017-Nov17ReReco','2016-Legacy','2016-Feb17ReMiniAOD','2018-Prompt','2016-UL', '2017-UL', '2018-UL']
     if era not in valid_eras:
         raise RuntimeError('error, era {} not in list of allowed eras {}'.format(value,str(valid_eras)))
     return True
@@ -95,8 +95,14 @@ def _getEnergyCorrectionFile(era):
     if era=="2018-Prompt":
         return "EgammaAnalysis/ElectronTools/data/ScalesSmearings/Run2018_Step2Closure_CoarseEtaR9Gain_v2"
     if era=="2017-UL":
-        raise RuntimeError('Error in postRecoEgammaTools, era 2017-UL does not yet have energy corrections, please contact the e/gamma pog for more information')
+        return "EgammaAnalysis/ElectronTools/data/ScalesSmearings/Run2017_24Feb2020_runEtaR9Gain_v2"
+        
+    if era=="2016-UL" or era=="2018-UL":
+        raise RuntimeError('Error in postRecoEgammaTools, eras 2016-UL and 2018-UL are not yet have energy corrections, please contact the e/gamma pog for more information')
+
     raise LogicError('Error in postRecoEgammaTools, era '+era+' not added to energy corrections function, please update this function')
+
+
 
 def _isInputFrom80X(era):
     _check_valid_era(era)
@@ -309,6 +315,7 @@ def _setupEgammaEnergyCorrections(eleSrc,phoSrc,cfg):
     eleCalibProd.correctionFile = energyCorrectionFile
     phoCalibProd.correctionFile = energyCorrectionFile
 
+
     if cfg.applyEPCombBug and hasattr(eleCalibProd,'useSmearCorrEcalEnergyErrInComb'):
         eleCalibProd.useSmearCorrEcalEnergyErrInComb=True
     elif hasattr(eleCalibProd,'useSmearCorrEcalEnergyErrInComb'):
@@ -410,6 +417,7 @@ def _setupEgammaPostVIDUpdator(eleSrc,phoSrc,cfg):
         egamma_modifications.append(makeEnergyScaleAndSmearingSysModifier("calibratedPatElectrons","calibratedPatPhotons"))
         egamma_modifications.append(egamma8XLegacyEtScaleSysModifier)
         
+        print("RUNNING runEnergyCorrections")
     
     #add any missing variables to the slimmed electron 
     if cfg.runVID:
@@ -533,8 +541,8 @@ def setupEgammaPostRecoSeq(process,
             setupAllVIDIdsInModule(process,idmod,setupVIDPhotonSelection)
 
     if autoAdjustParams:
-        if era=="2017-UL" and runEnergyCorrections:
-            print "EgammaPostRecoTools:INFO auto adjusting runEnergyCorrections to False as they are not yet availible for 2017-UL, set autoAdjustParams = False to force them to run"
+        if ((era=="2016-UL" or era=="2018-UL") and runEnergyCorrections):
+            print "EgammaPostRecoTools:INFO auto adjusting runEnergyCorrections to False as they are not yet availible for 2016-UL and 2018-UL, set autoAdjustParams = False to force them to run"
             runEnergyCorrections = False
 
 
