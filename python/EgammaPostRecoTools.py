@@ -417,7 +417,6 @@ def _setupEgammaPostVIDUpdator(eleSrc,phoSrc,cfg):
         egamma_modifications.append(makeEnergyScaleAndSmearingSysModifier("calibratedPatElectrons","calibratedPatPhotons"))
         egamma_modifications.append(egamma8XLegacyEtScaleSysModifier)
         
-        print("RUNNING runEnergyCorrections")
     
     #add any missing variables to the slimmed electron 
     if cfg.runVID:
