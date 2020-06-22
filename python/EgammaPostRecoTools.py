@@ -102,9 +102,11 @@ def _getEnergyCorrectionFile(era):
         return "EgammaAnalysis/ElectronTools/data/ScalesSmearings/Run2018_Step2Closure_CoarseEtaR9Gain_v2"
     if era=="2017-UL":
         return "EgammaAnalysis/ElectronTools/data/ScalesSmearings/Run2017_24Feb2020_runEtaR9Gain_v2"
+    if era=="2018-UL":
+        return "EgammaAnalysis/ElectronTools/data/ScalesSmearings/Run2018_13Apr2020_RunEtaR9Gain_v2"
         
-    if era=="2016-UL" or era=="2018-UL":
-        raise RuntimeError('Error in postRecoEgammaTools, eras 2016-UL and 2018-UL do not yet have energy corrections, please contact the e/gamma pog for more information')
+    if era=="2016-UL":
+        raise RuntimeError('Error in postRecoEgammaTools, era 2016-UL does not yet have energy corrections, please contact the e/gamma pog for more information')
 
     raise LogicError('Error in postRecoEgammaTools, era '+era+' not added to energy corrections function, please update this function')
 
@@ -564,8 +566,8 @@ def setupEgammaPostRecoSeq(process,
             setupAllVIDIdsInModule(process,idmod,setupVIDPhotonSelection)
 
     if autoAdjustParams:
-        if ((era=="2016-UL" or era=="2018-UL") and runEnergyCorrections):
-            print "EgammaPostRecoTools:INFO auto adjusting runEnergyCorrections to False as they are not yet availible for 2016-UL and 2018-UL, set autoAdjustParams = False to force them to run"
+        if ((era=="2016-UL") and runEnergyCorrections):
+            print "EgammaPostRecoTools:INFO auto adjusting runEnergyCorrections to False as they are not yet availible for 2016-UL, set autoAdjustParams = False to force them to run"
             runEnergyCorrections = False
 
 
