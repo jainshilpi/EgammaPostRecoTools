@@ -13,7 +13,8 @@ def _validRelease():
     allowedVersions = { 8 : [0],
                         9 : [4],
                         10 : [2,6],
-                        11 : [0,1]
+                        11 : [0,1],
+                        12 : [0,1]
                         }
                 
     if majorVersion not in allowedVersions:
@@ -29,6 +30,7 @@ def _isULDataformat():
     return isUL
 
 
+
 def _CMSSWGT11():
     cmsswVersion =_getCMSSWVersion()
     return int(cmsswVersion[0]) >=11
@@ -42,11 +44,12 @@ _defaultEleIDModules =  [ 'RecoEgamma.ElectronIdentification.Identification.heep
                         'RecoEgamma.ElectronIdentification.Identification.cutBasedElectronID_Summer16_80X_V1_cff',
                         'RecoEgamma.ElectronIdentification.Identification.mvaElectronID_Spring16_GeneralPurpose_V1_cff',
                         'RecoEgamma.ElectronIdentification.Identification.mvaElectronID_Spring16_HZZ_V1_cff',
+
                         ]
 _defaultPhoIDModules =  [ 'RecoEgamma.PhotonIdentification.Identification.cutBasedPhotonID_Fall17_94X_V1_TrueVtx_cff',
                         'RecoEgamma.PhotonIdentification.Identification.mvaPhotonID_Fall17_94X_V1p1_cff', 
                         'RecoEgamma.PhotonIdentification.Identification.cutBasedPhotonID_Spring16_V2p2_cff',
-                        'RecoEgamma.PhotonIdentification.Identification.mvaPhotonID_Spring16_nonTrig_V1_cff'
+                        'RecoEgamma.PhotonIdentification.Identification.mvaPhotonID_Spring16_nonTrig_V1_cff',
                         ]
 if not _isULDataformat:
     #was depreciated due to the new e/gamma dataformat for UL
@@ -84,7 +87,7 @@ else:
     print "EgammaPostRecoTools: Fall17V2 cut based Photons ID modules not found, running ID without them. If you want Fall17V2 CutBased Photon IDs, please merge the approprate PR\n  94X:  git cms-merge-topic cms-egamma/EgammaID_949\n  102X: git cms-merge-topic cms-egamma/EgammaID_1023"
 
 def _check_valid_era(era):
-    valid_eras = ['2017-Nov17ReReco','2016-Legacy','2016-Feb17ReMiniAOD','2018-Prompt','2016preVFP-UL', '2016postVFP-UL', '2017-UL', '2018-UL']
+    valid_eras = ['2017-Nov17ReReco','2016-Legacy','2016-Feb17ReMiniAOD','2018-Prompt','2016preVFP-UL', '2016postVFP-UL', '2017-UL', '2018-UL', 'PhaseII']
     if era not in valid_eras:
         raise RuntimeError('error, era {} not in list of allowed eras {}'.format(value,str(valid_eras)))
     return True
@@ -109,6 +112,9 @@ def _getEnergyCorrectionFile(era):
     if era=="2016postVFP-UL":
         return "EgammaAnalysis/ElectronTools/data/ScalesSmearings/Run2016_UltraLegacy_postVFP_RunFineEtaR9Gain"
 
+    if era=="PhaseII":
+        raise LogicError('Error in postRecoEgammaTools, era PhaseII does not suppose S+S corrections for now. Please run without it')
+        
     raise LogicError('Error in postRecoEgammaTools, era '+era+' not added to energy corrections function, please update this function')
 
 
